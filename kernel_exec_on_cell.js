@@ -1,15 +1,20 @@
 // Copyright (c) Jupyter-Contrib Team.
 // Distributed under the terms of the Modified BSD License.
 
-define(function(require, exports, module) {
+define([
+    'jquery',
+    'base/js/namespace',
+    'base/js/events',
+    'notebook/js/codecell',
+], function(
+    $,
+    Jupyter,
+    events,
+    codecell
+) {
     'use strict';
 
-    var $ = require('jquery');
-    var Jupyter = require('base/js/namespace');
-    var events = require('base/js/events');
-    var utils = require('base/js/utils');
-    var ConfigSection = require('services/config').ConfigSection;
-    var CodeCell = require('notebook/js/codecell').CodeCell;
+    var CodeCell = codecell.CodeCell;
 
     // this wrapper function allows config & hotkeys to be per-plugin
     function KernelExecOnCells(mod_name, cfg) {
@@ -180,8 +185,16 @@ define(function(require, exports, module) {
     KernelExecOnCells.prototype.add_toolbar_button = function() {
         if ($('#' + this.mod_name + '_button').length < 1) {
             var button_group_id = this.mod_name + '_button';
-            Jupyter.toolbar.add_buttons_group(
-                [this.cfg.actions.process_selected.name], button_group_id);
+            var that = this;
+            Jupyter.toolbar.add_buttons_group([{
+                label: this.cfg.kbd_shortcut_text + ' selected cell(s) (add shift for all cells)',
+                icon: this.cfg.button_icon,
+                callback: function(evt) {
+                    that.autoformat_cells(
+                        evt.shiftKey ? Jupyter.notebook.get_cells().map(function (cell, idx) { return idx; }) : undefined
+                    );
+                },
+            }], button_group_id);
         }
     };
 
@@ -219,12 +232,7 @@ define(function(require, exports, module) {
             help_index: 'yf',
             icon: that.cfg.button_icon,
             handler: function(evt) {
-                var indices = [],
-                    N = Jupyter.notebook.ncells();
-                for (var i = 0; i < N; i++) {
-                    indices.push(i);
-                }
-                that.autoformat_cells(indices);
+                that.autoformat_cells(Jupyter.notebook.get_cells().map(function (cell, idx) { return idx; }));
             },
         };
 
@@ -286,13 +294,11 @@ define(function(require, exports, module) {
 
     KernelExecOnCells.prototype.initialize_plugin = function() {
         var that = this;
-        var base_url = utils.get_body_data("baseUrl");
-        var conf_section = new ConfigSection('notebook', { base_url: base_url });
         // first, load config
-        conf_section.load()
+        Jupyter.notebook.config.loaded
             // now update default config with that loaded from server
-            .then(function on_success(config_data) {
-                $.extend(true, that.cfg, config_data[that.mod_name]);
+            .then(function on_success() {
+                $.extend(true, that.cfg, Jupyter.notebook.config.data[that.mod_name]);
             }, function on_error(err) {
                 console.warn(that.mod_log_prefix, 'error loading config:', err);
             })
@@ -329,6 +335,5 @@ define(function(require, exports, module) {
             });
     };
 
-    exports.define_plugin = KernelExecOnCells;
     return {define_plugin: KernelExecOnCells};
 });

@@ -273,6 +273,9 @@ History
 - [@jfbercher], january 2017
   - updated documentation
   - added autopep8 nbextension as a plugin using the shared library
+- [@jcb91], january 2018
+  - library: made shift-click of toolbar button affect whole notebook, rather
+    than single cell
 
 
 [2to3]: README_2to3.md
